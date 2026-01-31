@@ -363,7 +363,10 @@ def main():
         else:
             image = Image.open(uploaded_file)
             st.markdown('<div class="image-container">', unsafe_allow_html=True)
-            st.image(image, caption="Uploaded MRI Scan", use_container_width=True)
+            try:
+                st.image(image, caption="Uploaded MRI Scan", use_container_width=True)
+            except TypeError:
+                st.image(image, caption="Uploaded MRI Scan", use_column_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
             
             # Image info
