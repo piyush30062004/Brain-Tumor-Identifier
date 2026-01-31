@@ -1,0 +1,12 @@
+
+## 📦 requirements.txt
+
+```txt
+tensorflow
+keras
+numpy
+opencv-python
+matplotlib
+scikit-learn
+jupyter
+pillow
