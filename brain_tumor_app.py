@@ -323,9 +323,9 @@ def load_model():
         model = tf.keras.models.load_model("brain_tumor_model.keras")
         return model
     except Exception as e:
-        st.error(f"Error loading model: {str(e)}")
-        return None
-
+        # This prevents the app from crashing if the file is missing
+        st.sidebar.warning("⚠️ Model file not found. Running in Demo Mode.")
+        return "DEMO"
 # Main content
 def main():
     # Header
@@ -388,30 +388,39 @@ def main():
             model = load_model()
             
             if model is not None:
-                # Show processing
                 with st.spinner("🔄 Analyzing MRI scan..."):
-                    # Preprocess image
+                    # 1. Preprocess image
                     img = np.array(image)
                     
-                    # Convert grayscale to RGB if needed
-                    if len(img.shape) == 2:  # Grayscale image
+                    # Convert to RGB (standard for 224x224x3 models)
+                    if len(img.shape) == 2:
                         img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-                    elif img.shape[2] == 4:  # RGBA image
+                    elif img.shape[2] == 4:
                         img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
+                    elif img.shape[2] == 1: # Handle single channel arrays
+                        img = cv2.merge([img, img, img])
                     
-                    # Resize and normalize
+                    # 2. Resize and normalize
                     img = cv2.resize(img, (224, 224))
-                    img = img / 255.0
-                    img = img.reshape(1, 224, 224, 3)
+                    img = img.astype('float32') / 255.0
+                    img = np.expand_dims(img, axis=0) # Better than .reshape()
                     
-                    # Prediction
-                    pred = model.predict(img, verbose=0)[0][0]
+                    # 3. Prediction Handling
+                    if model == "DEMO":
+                        import time
+                        time.sleep(1) # Simulate AI processing
+                        pred = 0.87 # Static value for testing UI, or use np.random.rand()
+                    else:
+                        prediction = model.predict(img, verbose=0)
+                        # Extract single value regardless of output shape [1,1] or [1,]
+                        pred = float(prediction[0][0] if len(prediction.shape) > 1 else prediction[0])
                     
-                    # Update session state
-                    st.session_state.predictions_made += 1
-                    if pred > 0.5:
-                        st.session_state.tumor_detected += 1
-                
+                    # 4. Update session state (Use a trigger so it doesn't loop)
+                    if 'last_analyzed' not in st.session_state or st.session_state.last_analyzed != uploaded_file.name:
+                        st.session_state.predictions_made += 1
+                        if pred > 0.5:
+                            st.session_state.tumor_detected += 1
+                        st.session_state.last_analyzed = uploaded_file.name
                 # Display results
                 if pred > 0.5:
                     st.markdown(f"""
